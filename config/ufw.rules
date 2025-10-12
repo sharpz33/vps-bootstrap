@@ -1,0 +1,21 @@
+# UFW Firewall Rules
+# Applied by scripts/02-security.sh
+
+# Default policies
+default deny incoming
+default allow outgoing
+
+# Allowed ports
+allow 22/tcp    # SSH
+allow 80/tcp    # HTTP
+allow 443/tcp   # HTTPS
+
+# Additional ports (uncomment as needed)
+# allow 8080/tcp  # Custom application
+# allow 3000/tcp  # Development server
+
+# Rate limiting for SSH (alternative to fail2ban)
+# limit 22/tcp
+
+# Enable IPv6 (if needed)
+# IPV6=yes
