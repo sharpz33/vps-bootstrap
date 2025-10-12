@@ -129,6 +129,27 @@ alias lt='eza --tree --level=2 --icons' 2>/dev/null || alias lt='tree -L 2'
 alias cat='batcat' 2>/dev/null || alias cat='cat'
 alias grep='rg' 2>/dev/null || alias grep='grep --color=auto'
 alias vim='nvim' 2>/dev/null || alias vim='vim'
+alias vi='nvim' 2>/dev/null || alias vi='vi'
+
+# Git aliases (oh-my-zsh style)
+alias g='git'
+alias ga='git add'
+alias gaa='git add --all'
+alias gb='git branch'
+alias gc='git commit -v'
+alias gc!='git commit -v --amend'
+alias gca='git commit -v -a'
+alias gca!='git commit -v -a --amend'
+alias gcl='git clone --recurse-submodules'
+alias gco='git checkout'
+alias gd='git diff'
+alias gf='git fetch'
+alias gfa='git fetch --all --prune'
+alias gl='git pull'
+alias gp='git push'
+alias gst='git status'
+alias glog='git log --oneline --decorate --graph'
+alias gloga='git log --oneline --decorate --graph --all'
 
 # Docker shortcuts
 alias d='docker'
@@ -156,7 +177,28 @@ alias la='eza -a --icons' 2>/dev/null || alias la='ls -A'
 alias lt='eza --tree --level=2 --icons' 2>/dev/null || alias lt='tree -L 2'
 alias cat='batcat' 2>/dev/null || alias cat='cat'
 alias grep='rg' 2>/dev/null || alias grep='grep --color=auto'
-alias vim='nvim' 2>/dev/null || alias vim='nvim'
+alias vim='nvim' 2>/dev/null || alias vim='vim'
+alias vi='nvim' 2>/dev/null || alias vi='vi'
+
+# Git aliases (oh-my-zsh style)
+alias g='git'
+alias ga='git add'
+alias gaa='git add --all'
+alias gb='git branch'
+alias gc='git commit -v'
+alias gc!='git commit -v --amend'
+alias gca='git commit -v -a'
+alias gca!='git commit -v -a --amend'
+alias gcl='git clone --recurse-submodules'
+alias gco='git checkout'
+alias gd='git diff'
+alias gf='git fetch'
+alias gfa='git fetch --all --prune'
+alias gl='git pull'
+alias gp='git push'
+alias gst='git status'
+alias glog='git log --oneline --decorate --graph'
+alias gloga='git log --oneline --decorate --graph --all'
 
 # Docker shortcuts
 alias d='docker'
@@ -173,14 +215,26 @@ alias pscpu='ps auxf | sort -nr -k 3 | head -10'
 ALIASEOF
 fi
 
-# Optional: Setup oh-my-zsh (commented out by default)
-# Uncomment to install oh-my-zsh for root user
-# log "Installing oh-my-zsh..."
-# if [ ! -d /root/.oh-my-zsh ]; then
-#     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
-#     sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' /root/.zshrc
-#     chsh -s /bin/zsh root
-#     log "oh-my-zsh installed for root"
-# fi
+# Setup oh-my-zsh and change default shell to zsh
+log "Installing oh-my-zsh..."
+if [ ! -d /root/.oh-my-zsh ]; then
+    sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' /root/.zshrc
+    chsh -s /bin/zsh root
+    log "oh-my-zsh installed for root, default shell changed to zsh"
+else
+    log "oh-my-zsh already installed"
+fi
+
+# Setup oh-my-zsh for sudo user if exists
+if [ -n "${SUDO_USER:-}" ]; then
+    SUDO_HOME=$(eval echo ~$SUDO_USER)
+    if [ ! -d "$SUDO_HOME/.oh-my-zsh" ]; then
+        sudo -u "$SUDO_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        sudo -u "$SUDO_USER" sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' "$SUDO_HOME/.zshrc"
+        chsh -s /bin/zsh "$SUDO_USER"
+        log "oh-my-zsh installed for $SUDO_USER, default shell changed to zsh"
+    fi
+fi
 
 log "System setup completed successfully"

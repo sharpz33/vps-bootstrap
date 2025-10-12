@@ -11,13 +11,29 @@ Automated VPS setup for Ubuntu 24.04 LTS with security hardening, Docker, and mo
 - System updates and essential packages
 - **Development tools**: mc, tmux, neovim, Python (pip, venv)
 - **Modern CLI tools**: eza, fzf, bat, ripgrep
-- **Shell enhancements**: useful aliases for Docker, system monitoring
+- **Shell**: zsh with oh-my-zsh (agnoster theme) set as default
+- **Shell enhancements**: git aliases (oh-my-zsh style), Docker shortcuts, system monitoring
 - Security hardening (UFW firewall, fail2ban, SSH hardening)
 - Docker + Docker Compose installation
 - SOPS + Age for secrets management
 - Monitoring with Discord notifications (disk alerts, uptime)
 
 ## Quick Start
+
+### Prerequisites
+
+**IMPORTANT:** When creating your VPS, make sure to add your SSH key during setup. This is required for secure access.
+
+If you don't have an SSH key:
+```bash
+# Generate SSH key on your local machine
+ssh-keygen -t ed25519 -C "your_email@example.com"
+
+# Copy public key (add this to VPS during creation)
+cat ~/.ssh/id_ed25519.pub
+```
+
+### Installation
 
 ```bash
 # SSH to your VPS
@@ -49,7 +65,11 @@ sudo ./setup.sh
 3. **Docker**: Latest Docker Engine + Docker Compose v2
 4. **SOPS**: Secrets encryption with Age
 5. **Monitoring**: Disk space alerts via Discord webhook
-6. **Shell enhancements**: Useful aliases for ls, docker, system monitoring
+6. **Shell**: 
+   - zsh with oh-my-zsh (agnoster theme) set as default
+   - Git aliases (oh-my-zsh style): g, ga, gc, gco, gst, glog, etc.
+   - Docker shortcuts: d, dc, dps, dlog
+   - System monitoring aliases
 
 ## Configuration
 
@@ -65,9 +85,11 @@ If not set, monitoring will be skipped.
 
 After successful setup:
 
-1. Configure Age key: `~/.config/sops/age/keys.txt`
-2. Test Discord alerts: `./scripts/monitoring.sh test`
-3. Reboot recommended: `sudo reboot`
+1. **Logout and login again** (new shell: zsh with oh-my-zsh)
+2. Configure Age key: `~/.config/sops/age/keys.txt`
+3. Test Discord alerts: `/opt/monitoring/test-notification.sh`
+4. Test new aliases: `gst` (git status), `ll` (eza ls), `d ps` (docker ps)
+5. Reboot recommended: `sudo reboot`
 
 ## Files
 
