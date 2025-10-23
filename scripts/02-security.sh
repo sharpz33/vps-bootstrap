@@ -101,16 +101,16 @@ grep -q "^ClientAliveCountMax" "$SSH_CONFIG" || echo "ClientAliveCountMax 2" >> 
 
 # Test SSH config
 log "Testing SSH configuration..."
-sshd -t
+sshd -t || /usr/sbin/sshd -t
 
 if [ $? -eq 0 ]; then
     log "SSH config test passed"
-    systemctl restart sshd
+    systemctl restart ssh
     log "SSH service restarted"
 else
     log "ERROR: SSH config test failed. Reverting to backup."
     cp "$SSH_BACKUP" "$SSH_CONFIG"
-    systemctl restart sshd
+    systemctl restart ssh
     exit 1
 fi
 

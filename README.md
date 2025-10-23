@@ -46,7 +46,7 @@ cat ~/.ssh/id_ed25519.pub
 ssh root@YOUR_VPS_IP
 
 # Clone repo from GitHub
-git clone https://github.com/yourusername/vps-bootstrap.git
+git clone https://github.com/sharpz33/vps-bootstrap.git
 cd vps-bootstrap
 
 # Make scripts executable
