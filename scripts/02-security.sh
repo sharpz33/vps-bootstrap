@@ -78,19 +78,17 @@ fi
 # Apply hardening
 log "Applying SSH security settings..."
 
-# Disable root login (comment out if you need root access)
+# Disable root login
+log "Disabling root SSH login..."
 sed -i 's/^#*PermitRootLogin.*/PermitRootLogin no/' "$SSH_CONFIG"
 
-# Disable password authentication (CAREFUL: ensure you have SSH keys!)
-# Uncomment the line below only if you have SSH keys configured
-# sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' "$SSH_CONFIG"
+# Disable password authentication (SSH keys only)
+log "Disabling password authentication (SSH keys only)..."
+sed -i 's/^#*PasswordAuthentication.*/PasswordAuthentication no/' "$SSH_CONFIG"
 
-# For now, we'll just warn about it
-if grep -q "^PasswordAuthentication yes" "$SSH_CONFIG"; then
-    log "WARNING: Password authentication is still enabled"
-    log "To disable after setting up SSH keys, run:"
-    log "  sed -i 's/^PasswordAuthentication yes/PasswordAuthentication no/' $SSH_CONFIG"
-    log "  systemctl restart sshd"
+# Ensure PubkeyAuthentication is enabled
+if ! grep -q "^PubkeyAuthentication yes" "$SSH_CONFIG"; then
+    sed -i 's/^#*PubkeyAuthentication.*/PubkeyAuthentication yes/' "$SSH_CONFIG"
 fi
 
 # Other SSH hardening
@@ -122,4 +120,5 @@ log "IMPORTANT: Current security status:"
 log "  - UFW enabled (ports 22, 80, 443 open)"
 log "  - fail2ban active (SSH brute-force protection)"
 log "  - SSH root login: DISABLED"
-log "  - SSH password auth: STILL ENABLED (disable after SSH key setup)"
+log "  - SSH password auth: DISABLED (SSH keys only)"
+log "  - Public key authentication: ENABLED"
