@@ -90,11 +90,33 @@ cat > /etc/docker/daemon.json <<EOF
   "log-driver": "json-file",
   "log-opts": {
     "max-size": "10m",
-    "max-file": "3"
+    "max-file": "5"
   },
-  "storage-driver": "overlay2"
+  "storage-driver": "overlay2",
+  "dns": ["172.17.0.1"],
+  "bip": "172.17.0.1/16"
 }
 EOF
+
+# Expose systemd-resolved to Docker network
+log "Configuring systemd-resolved for Docker DNS..."
+mkdir -p /etc/systemd/resolved.conf.d
+cat > /etc/systemd/resolved.conf.d/20-docker-dns.conf <<EOF
+[Resolve]
+DNSStubListenerExtra=172.17.0.1
+EOF
+
+systemctl restart systemd-resolved
+
+# Prevent Docker from blocking boot (network-online.target)
+log "Configuring Docker service to prevent boot blocking..."
+mkdir -p /etc/systemd/system/docker.service.d
+cat > /etc/systemd/system/docker.service.d/no-block-boot.conf <<EOF
+[Unit]
+DefaultDependencies=no
+EOF
+
+systemctl daemon-reload
 
 # Restart Docker to apply config
 systemctl restart docker

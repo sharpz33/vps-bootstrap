@@ -114,6 +114,22 @@ else
     exit 1
 fi
 
+# Increase sudo password tries
+log "Configuring sudo password attempts..."
+cat > /etc/sudoers.d/passwd-tries <<EOF
+# Give the user 10 instead of 3 tries to enter their password before lockout
+Defaults passwd_tries=10
+EOF
+chmod 440 /etc/sudoers.d/passwd-tries
+
+# Validate sudoers configuration
+if visudo -c -f /etc/sudoers.d/passwd-tries > /dev/null 2>&1; then
+    log "sudo password tries increased to 10"
+else
+    log "ERROR: sudoers configuration validation failed, removing file"
+    rm -f /etc/sudoers.d/passwd-tries
+fi
+
 log "Security hardening completed successfully"
 log ""
 log "IMPORTANT: Current security status:"
@@ -122,3 +138,4 @@ log "  - fail2ban active (SSH brute-force protection)"
 log "  - SSH root login: DISABLED"
 log "  - SSH password auth: DISABLED (SSH keys only)"
 log "  - Public key authentication: ENABLED"
+log "  - sudo password tries: 10 (increased from 3)"

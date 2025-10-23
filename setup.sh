@@ -5,105 +5,91 @@ set -euo pipefail
 # Ubuntu 24.04 LTS only
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-LOG_FILE="/var/log/vps-bootstrap.log"
 
-# Colors
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m' # No Color
+# Load helper functions (logging, error handling, utilities)
+source "$SCRIPT_DIR/lib/helpers.sh"
 
-log() {
-    echo -e "${GREEN}[$(date +'%Y-%m-%d %H:%M:%S')]${NC} $1" | tee -a "$LOG_FILE"
-}
-
-error() {
-    echo -e "${RED}[ERROR]${NC} $1" | tee -a "$LOG_FILE"
-    exit 1
-}
-
-warn() {
-    echo -e "${YELLOW}[WARN]${NC} $1" | tee -a "$LOG_FILE"
-}
-
-check_root() {
-    if [[ $EUID -ne 0 ]]; then
-        error "This script must be run as root (use sudo)"
-    fi
-}
+# Setup error handling (trap ERR, INT, TERM)
+setup_error_handling
 
 check_os() {
     if [ ! -f /etc/os-release ]; then
-        error "Cannot detect OS. /etc/os-release not found."
+        log_error "Cannot detect OS. /etc/os-release not found."
+        exit 1
     fi
-    
+
     . /etc/os-release
-    
+
     if [[ "$ID" != "ubuntu" ]]; then
-        error "Unsupported OS: $ID. This script only supports Ubuntu."
+        log_error "Unsupported OS: $ID. This script only supports Ubuntu."
+        exit 1
     fi
-    
+
     if [[ "$VERSION_ID" != "24.04" ]]; then
-        warn "Detected Ubuntu $VERSION_ID. This script is tested on 24.04 LTS only."
+        log_warning "Detected Ubuntu $VERSION_ID. This script is tested on 24.04 LTS only."
         read -p "Continue anyway? (y/N): " -n 1 -r
         echo
         if [[ ! $REPLY =~ ^[Yy]$ ]]; then
             exit 1
         fi
     fi
-    
-    log "OS check passed: Ubuntu $VERSION_ID"
-}
 
-run_script() {
-    local script=$1
-    local name=$2
-    
-    log "Running: $name"
-    
-    if [ ! -f "$SCRIPT_DIR/scripts/$script" ]; then
-        error "Script not found: $script"
-    fi
-    
-    chmod +x "$SCRIPT_DIR/scripts/$script"
-    
-    if bash "$SCRIPT_DIR/scripts/$script"; then
-        log "✓ $name completed successfully"
-    else
-        error "✗ $name failed"
-    fi
+    log_success "OS check passed: Ubuntu $VERSION_ID"
 }
 
 main() {
-    log "======================================"
-    log "VPS Bootstrap - Starting Setup"
-    log "======================================"
+    # Start logging
+    start_install_log
 
-    check_root
+    echo ""
+    log_info "======================================"
+    log_info "VPS Bootstrap - Starting Setup"
+    log_info "======================================"
+    echo ""
+
+    require_root
     check_os
 
-    # Run setup scripts in order
-    run_script "00-user.sh" "User Creation"
-    run_script "01-system.sh" "System Setup"
-    run_script "02-security.sh" "Security Hardening"
-    run_script "03-docker.sh" "Docker Installation"
-    run_script "05-sops.sh" "SOPS + Age Setup"
-    run_script "04-monitoring.sh" "Monitoring Setup"
+    echo ""
+    log_info "Running preflight checks..."
+    echo ""
 
-    log "======================================"
-    log "✓ VPS Bootstrap completed successfully"
-    log "======================================"
-    log ""
-    log "CRITICAL: SSH root login is now DISABLED"
-    log ""
-    log "Next steps:"
-    log "1. Test SSH login as new user BEFORE disconnecting root session"
-    log "   (open new terminal: ssh USERNAME@YOUR_SERVER_IP)"
-    log "2. Configure Age key: ~/.config/sops/age/keys.txt"
-    log "3. Test Discord alerts (if webhook provided)"
-    log "4. Reboot recommended: sudo reboot"
-    log ""
-    log "Log file: $LOG_FILE"
+    # Run preflight checks
+    run_logged "$SCRIPT_DIR/scripts/00-preflight.sh"
+
+    echo ""
+    log_info "======================================"
+    log_info "Starting installation scripts..."
+    log_info "======================================"
+    echo ""
+
+    # Run setup scripts in order using run_logged
+    run_logged "$SCRIPT_DIR/scripts/01-user.sh"
+    run_logged "$SCRIPT_DIR/scripts/02-system.sh"
+    run_logged "$SCRIPT_DIR/scripts/03-security.sh"
+    run_logged "$SCRIPT_DIR/scripts/04-docker.sh"
+    run_logged "$SCRIPT_DIR/scripts/05-monitoring.sh"
+    run_logged "$SCRIPT_DIR/scripts/06-sops.sh"
+
+    # Stop logging with summary
+    stop_install_log
+
+    echo ""
+    log_success "======================================"
+    log_success "VPS Bootstrap completed successfully!"
+    log_success "======================================"
+    echo ""
+    log_warning "CRITICAL: SSH root login is now DISABLED"
+    echo ""
+    log_info "Next steps:"
+    log_info "1. Test SSH login as new user BEFORE disconnecting root session"
+    log_info "   (open new terminal: ssh USERNAME@YOUR_SERVER_IP)"
+    log_info "2. Configure Age key: ~/.config/sops/age/keys.txt"
+    log_info "3. Test Discord alerts (if webhook provided)"
+    log_info "4. Reboot recommended: sudo reboot"
+    echo ""
+    log_info "Full log file: $VPS_LOG_FILE"
+    echo ""
 }
 
 main "$@"
