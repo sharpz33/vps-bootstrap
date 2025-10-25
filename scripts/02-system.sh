@@ -219,8 +219,32 @@ fi
 log "Installing oh-my-zsh..."
 if [ ! -d /root/.oh-my-zsh ]; then
     sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+    # Change to agnoster theme
     sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' /root/.zshrc
     chsh -s /bin/zsh root
+
+    # Add terminal compatibility, locale settings, and key bindings
+    cat >> /root/.zshrc <<'ZSHEOF'
+
+# Terminal and locale configuration
+# Fix terminal compatibility (for Ghostty and other modern terminals)
+if [[ $TERM == "xterm-ghostty" || $TERM == "ghostty" ]]; then
+    export TERM=xterm-256color
+fi
+
+# Ensure true color support
+export COLORTERM=truecolor
+
+# Locale settings
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# Fix backspace and delete keys (safeguard)
+bindkey '^?' backward-delete-char
+bindkey '^H' backward-delete-char
+bindkey '^[[3~' delete-char
+ZSHEOF
+
     log "oh-my-zsh installed for root, default shell changed to zsh"
 else
     log "oh-my-zsh already installed"
@@ -231,10 +255,42 @@ if [ -n "${SUDO_USER:-}" ]; then
     SUDO_HOME=$(eval echo ~$SUDO_USER)
     if [ ! -d "$SUDO_HOME/.oh-my-zsh" ]; then
         sudo -u "$SUDO_USER" sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)" "" --unattended
+        # Change to agnoster theme
         sudo -u "$SUDO_USER" sed -i 's/ZSH_THEME="robbyrussell"/ZSH_THEME="agnoster"/' "$SUDO_HOME/.zshrc"
         chsh -s /bin/zsh "$SUDO_USER"
+
+        # Add terminal compatibility, locale settings, and key bindings
+        sudo -u "$SUDO_USER" tee -a "$SUDO_HOME/.zshrc" > /dev/null <<'ZSHEOF'
+
+# Terminal and locale configuration
+# Fix terminal compatibility (for Ghostty and other modern terminals)
+if [[ $TERM == "xterm-ghostty" || $TERM == "ghostty" ]]; then
+    export TERM=xterm-256color
+fi
+
+# Ensure true color support
+export COLORTERM=truecolor
+
+# Locale settings
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+
+# Fix backspace and delete keys (safeguard)
+bindkey '^?' backward-delete-char
+bindkey '^H' backward-delete-char
+bindkey '^[[3~' delete-char
+ZSHEOF
+
         log "oh-my-zsh installed for $SUDO_USER, default shell changed to zsh"
     fi
+fi
+
+# Ensure locale is generated
+log "Ensuring en_US.UTF-8 locale is available..."
+if ! locale -a | grep -q "en_US.utf8"; then
+    locale-gen en_US.UTF-8 2>/dev/null || log "Warning: Could not generate locale"
+else
+    log "Locale en_US.UTF-8 already available"
 fi
 
 log "System setup completed successfully"

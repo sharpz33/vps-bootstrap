@@ -21,23 +21,44 @@ fi
 
 log "Starting user creation..."
 
-# Get username from environment or prompt
-if [ -z "${VPS_USERNAME:-}" ]; then
-    log "No VPS_USERNAME environment variable set."
-    read -p "Enter username for new sudo user: " VPS_USERNAME
+# Check if there's already a sudo user (excluding root)
+EXISTING_SUDO_USER=$(getent group sudo | cut -d: -f4 | tr ',' '\n' | grep -v '^root$' | head -n1 || true)
 
-    if [ -z "$VPS_USERNAME" ]; then
-        error "Username cannot be empty"
+# Get username from environment or detect existing or prompt
+if [ -z "${VPS_USERNAME:-}" ]; then
+    # Check if there's already a sudo user
+    if [ -n "$EXISTING_SUDO_USER" ]; then
+        log "Found existing sudo user: $EXISTING_SUDO_USER"
+        log "Skipping user creation (system is already configured)"
+        VPS_USERNAME="$EXISTING_SUDO_USER"
+    else
+        # No existing sudo user, prompt for new one
+        log "No sudo user found. Creating new user..."
+        read -p "Enter username for new sudo user: " VPS_USERNAME
+
+        if [ -z "$VPS_USERNAME" ]; then
+            error "Username cannot be empty"
+        fi
+
+        # Validate username (alphanumeric, underscore, hyphen)
+        if ! [[ "$VPS_USERNAME" =~ ^[a-z][-a-z0-9_]*$ ]]; then
+            error "Invalid username. Use lowercase letters, numbers, hyphens, and underscores only."
+        fi
+    fi
+else
+    # VPS_USERNAME provided via environment variable
+    log "Using username from environment: $VPS_USERNAME"
+
+    # Validate username (alphanumeric, underscore, hyphen)
+    if ! [[ "$VPS_USERNAME" =~ ^[a-z][-a-z0-9_]*$ ]]; then
+        error "Invalid username. Use lowercase letters, numbers, hyphens, and underscores only."
     fi
 fi
 
-# Validate username (alphanumeric, underscore, hyphen)
-if ! [[ "$VPS_USERNAME" =~ ^[a-z][-a-z0-9_]*$ ]]; then
-    error "Invalid username. Use lowercase letters, numbers, hyphens, and underscores only."
-fi
-
 # Check if user already exists
+USER_EXISTS=false
 if id "$VPS_USERNAME" &>/dev/null; then
+    USER_EXISTS=true
     log "User $VPS_USERNAME already exists"
 
     # Ensure user is in sudo group
@@ -60,26 +81,33 @@ else
     passwd -l "$VPS_USERNAME"
 fi
 
-# Copy SSH keys from root to new user
+# Setup SSH keys
 USER_HOME="/home/$VPS_USERNAME"
 USER_SSH_DIR="$USER_HOME/.ssh"
 
-log "Setting up SSH keys for $VPS_USERNAME..."
-
-# Create .ssh directory if it doesn't exist
-if [ ! -d "$USER_SSH_DIR" ]; then
-    mkdir -p "$USER_SSH_DIR"
-    log "Created $USER_SSH_DIR"
-fi
-
-# Copy authorized_keys from root if it exists
-if [ -f /root/.ssh/authorized_keys ]; then
-    log "Copying SSH keys from root..."
-    cp /root/.ssh/authorized_keys "$USER_SSH_DIR/authorized_keys"
-    log "SSH keys copied successfully"
+# Check if SSH keys are already configured
+SSH_KEYS_EXIST=false
+if [ -f "$USER_SSH_DIR/authorized_keys" ] && [ -s "$USER_SSH_DIR/authorized_keys" ]; then
+    SSH_KEYS_EXIST=true
+    log "SSH keys already configured for $VPS_USERNAME"
 else
-    log "WARNING: No SSH keys found in /root/.ssh/authorized_keys"
-    log "You may need to add SSH keys manually to $USER_SSH_DIR/authorized_keys"
+    log "Setting up SSH keys for $VPS_USERNAME..."
+
+    # Create .ssh directory if it doesn't exist
+    if [ ! -d "$USER_SSH_DIR" ]; then
+        mkdir -p "$USER_SSH_DIR"
+        log "Created $USER_SSH_DIR"
+    fi
+
+    # Copy authorized_keys from root if it exists
+    if [ -f /root/.ssh/authorized_keys ]; then
+        log "Copying SSH keys from root..."
+        cp /root/.ssh/authorized_keys "$USER_SSH_DIR/authorized_keys"
+        log "SSH keys copied successfully"
+    else
+        log "WARNING: No SSH keys found in /root/.ssh/authorized_keys"
+        log "You may need to add SSH keys manually to $USER_SSH_DIR/authorized_keys"
+    fi
 fi
 
 # Set correct permissions
@@ -105,15 +133,28 @@ else
 fi
 
 log ""
-log "User creation completed successfully!"
-log "========================================="
-log "Username: $VPS_USERNAME"
-log "Home directory: $USER_HOME"
-log "Sudo access: YES (passwordless)"
-log "SSH keys: Copied from root"
-log "Password: Disabled (SSH key only)"
-log "========================================="
-log ""
-log "IMPORTANT: Test SSH login as $VPS_USERNAME before logging out as root!"
-log "  ssh $VPS_USERNAME@YOUR_SERVER_IP"
+if [ "$USER_EXISTS" = true ]; then
+    log "User configuration verified successfully!"
+    log "========================================="
+    log "Username: $VPS_USERNAME (existing user)"
+    log "Home directory: $USER_HOME"
+    log "Sudo access: YES (passwordless)"
+    log "SSH keys: $([ "$SSH_KEYS_EXIST" = true ] && echo 'Already configured' || echo 'Copied from root')"
+    log "Password: Disabled (SSH key only)"
+    log "========================================="
+    log ""
+    log "System is already configured. No changes needed."
+else
+    log "User creation completed successfully!"
+    log "========================================="
+    log "Username: $VPS_USERNAME (newly created)"
+    log "Home directory: $USER_HOME"
+    log "Sudo access: YES (passwordless)"
+    log "SSH keys: Copied from root"
+    log "Password: Disabled (SSH key only)"
+    log "========================================="
+    log ""
+    log "IMPORTANT: Test SSH login as $VPS_USERNAME before logging out as root!"
+    log "  ssh $VPS_USERNAME@YOUR_SERVER_IP"
+fi
 log ""
